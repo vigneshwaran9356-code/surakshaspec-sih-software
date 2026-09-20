@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123b36">
+  <title>FeedTest</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #f2f6f2; --panel: #fff; --ink: #10231f; --muted: #5b6b66; --line: #cbd8d2; --accent: #0d6b5c; --good: #176b3a; --bad: #a13a25; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #10201d; --panel: #18302b; --ink: #f2f7f4; --muted: #b5c5bf; --line: #38534b; --accent: #75d1b9; --good: #8ee5a5; --bad: #ff9a7d; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Noto Sans Tamil", "Noto Sans Devanagari", system-ui, sans-serif; line-height: 1.5; }
+    main { width: min(100% - 2rem, 42rem); margin: auto; padding: 1rem 0 2rem; }
+    main.dashboard-hidden > :not(#welcome) { display: none; }
+    .welcome { min-height: 80vh; display: grid; align-content: center; gap: 1rem; text-align: center; }
+    .welcome-mark { width: 5rem; height: 5rem; display: grid; place-items: center; margin: auto; border-radius: 1.2rem; background: var(--accent); color: #fff; font-size: 2.5rem; font-weight: 800; }
+    .welcome h1 { font-size: 2.5rem; }
+    .welcome button { width: 100%; max-width: 20rem; margin: auto; }
+    header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+    h1 { margin: 0; font-size: 2rem; letter-spacing: 0; }
+    h2 { margin: 0; font-size: 1.2rem; }
+    p { margin: .45rem 0; }
+    .subtitle, .help, .meta { color: var(--muted); }
+    select { min-height: 2.75rem; border: 2px solid var(--line); border-radius: .5rem; padding: .4rem; background: var(--panel); color: var(--ink); font: inherit; }
+    .status { display: grid; grid-template-columns: auto 1fr; gap: .15rem .6rem; margin: 1rem 0; padding: .9rem; border: 2px solid var(--line); border-radius: .6rem; background: var(--panel); font-weight: 700; }
+    .status .meta { grid-column: 2; font-size: .85rem; font-weight: 500; }
+    .dot { width: .75rem; height: .75rem; border-radius: 50%; background: var(--bad); }
+    .dot.on { background: var(--good); }
+    .panel { margin-top: 1rem; padding: 1rem; border: 2px solid var(--line); border-radius: .6rem; background: var(--panel); }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; margin-top: .8rem; }
+    .tile { min-height: 7rem; padding: .8rem; border: 2px solid var(--line); border-radius: .5rem; }
+    .tile-name { color: var(--muted); font-size: .95rem; }
+    .tile-value { margin-top: .4rem; font-size: 1.55rem; font-weight: 800; }
+    .empty { color: var(--muted); }
+    .stale { color: var(--bad); }
+    .controls { display: grid; gap: .7rem; }
+    .controls label { font-weight: 700; }
+    .controls select { width: 100%; }
+    button { min-height: 2.75rem; padding: .5rem .85rem; border: 0; border-radius: .5rem; background: var(--accent); color: #fff; font: inherit; font-weight: 700; }
+    .result-good { color: var(--good); }
+    .result-moderate, .result-poor, .result-unsafe { color: var(--bad); }
+    ul { margin: .5rem 0 0; padding-left: 1.3rem; }
+    canvas { display: block; width: 100%; height: 12rem; margin-top: .8rem; border: 2px solid var(--line); border-radius: .5rem; background: var(--bg); }
+  </style>
+</head>
+<body>
+  <main class="dashboard-hidden">
+    <section class="welcome" id="welcome">
+      <div class="welcome-mark" aria-hidden="true">F</div>
+      <div><h1 id="welcomeTitle">FeedTest</h1><p class="subtitle" id="welcomeSubtitle"></p></div>
+      <p class="help" id="welcomeHelp"></p>
+      <button id="startTesting" type="button"></button>
+    </section>
+    <header>
+      <div><h1 id="title">FeedTest</h1><p class="subtitle" id="subtitle"></p></div>
+      <label><span id="languageLabel"></span><br><select id="language"><option value="en">English</option><option value="ta">தமிழ்</option><option value="hi">हिन्दी</option></select></label>
+    </header>
+    <p class="help" id="help"></p>
+    <section class="status" aria-live="polite"><span class="dot" id="dot"></span><span id="connection"></span><span class="meta" id="lastUpdate"></span></section>
+    <section class="panel"><h2 id="readingsHeading"></h2><div class="tiles" id="tiles"></div><p class="empty" id="empty"></p></section>
+    <section class="panel controls">
+      <label for="feedType" id="feedTypeLabel"></label>
+      <select id="feedType"><option value="pellet">Pellet</option><option value="mash">Mash</option><option value="silage">Silage</option><option value="mineral">Mineral mixture</option></select>
+      <button id="checkQuality" type="button"></button>
+      <button id="exportCsv" type="button"></button>
+    </section>
+    <section class="panel"><h2 id="historyHeading"></h2><canvas id="chart" width="640" height="240"></canvas><p class="meta" id="historyCount"></p></section>
+    <section class="panel" id="resultPanel" hidden aria-live="polite"><h2 id="resultQuality"></h2><p id="resultAdvice"></p><p id="resultCoverage"></p><h3 id="problemsHeading"></h3><ul id="problems"></ul><h3 id="checksHeading"></h3><ul id="checksDone"></ul><h3 id="missingHeading"></h3><ul id="checksMissing"></ul></section>
+  </main>
+  <script>
+    (function () {
+      var languages = {
+        en: { name: "English", title: "FeedTest", subtitle: "Real sensor readings for feed and silage", welcome: "Offline feed and silage quality testing", startTesting: "Start testing", help: "Join the Wi-Fi network FeedTest. If your phone says there is no internet, choose to stay connected.", connected: "Connected", disconnected: "Disconnected", stale: "Data is stale", lastUpdate: "Last update", secondsAgo: "seconds ago", readingBoard: "Reading the board...", noSensors: "No sensor is connected yet. Values will appear when hardware sends them.", noReadings: "No readings available. Check the hardware connection.", noProblem: "No problem found in what was measured.", limitedAdvice: "No problem found in what was measured.", basedOn: "Based on", of: "of", sensorReadings: "sensor readings", limited: "Result is limited", feedType: "Feed type", checkQuality: "Check quality", exportCsv: "Export CSV", history: "Reading history", historyCount: "Saved real readings", problems: "Problems found", checksDone: "Checks done", checksMissing: "Checks not done", notMeasured: "Not measured", airTemperature: "Air temperature", humidity: "Air humidity", feedTemperature: "Feed temperature", unknownSensor: "Sensor", language: "Language", readings: "Live readings", feedTypes: ["Pellet", "Mash", "Silage", "Mineral mixture"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "Air temperature", hum: "Air humidity", ftemp: "Feed temperature" } },
+        ta: { name: "தமிழ்", title: "FeedTest", subtitle: "தீவனம் மற்றும் சிலேஜுக்கான உண்மையான சென்சார் அளவீடுகள்", welcome: "ஆஃப்லைன் தீவனம் மற்றும் சிலேஜ் தரச் சோதனை", startTesting: "சோதனையைத் தொடங்கவும்", help: "FeedTest Wi-Fi-யில் இணையுங்கள். இணையம் இல்லை என்று தொலைபேசி சொன்னால், இணைப்பைத் தொடரவும் என்பதைத் தேர்ந்தெடுக்கவும்.", connected: "இணைக்கப்பட்டது", disconnected: "இணைப்பு இல்லை", stale: "தரவு பழையது", lastUpdate: "கடைசி புதுப்பிப்பு", secondsAgo: "விநாடிகளுக்கு முன்", readingBoard: "போர்டைப் படிக்கிறது...", noSensors: "இன்னும் சென்சார் இணைக்கப்படவில்லை. சாதனம் தரவை அனுப்பும்போது மதிப்புகள் தோன்றும்.", noReadings: "அளவீடுகள் இல்லை. வன்பொருள் இணைப்பைச் சரிபார்க்கவும்.", noProblem: "அளவிடப்பட்டவற்றில் எந்தப் பிரச்சினையும் இல்லை.", limitedAdvice: "அளவிடப்பட்டவற்றில் எந்தப் பிரச்சினையும் இல்லை.", basedOn: "அடிப்படை", of: "இல்", sensorReadings: "சென்சார் அளவீடுகள்", limited: "முடிவு வரம்புக்குட்பட்டது", feedType: "தீவன வகை", checkQuality: "தரத்தைச் சரிபார்க்கவும்", exportCsv: "CSV ஏற்றுமதி", history: "அளவீட்டு வரலாறு", historyCount: "சேமிக்கப்பட்ட உண்மையான அளவீடுகள்", problems: "கண்டறியப்பட்ட பிரச்சினைகள்", checksDone: "செய்த சோதனைகள்", checksMissing: "செய்யாத சோதனைகள்", notMeasured: "அளவிடப்படவில்லை", airTemperature: "காற்றின் வெப்பநிலை", humidity: "காற்றின் ஈரப்பதம்", feedTemperature: "தீவனத்தின் வெப்பநிலை", unknownSensor: "சென்சார்", language: "மொழி", readings: "நேரடி அளவீடுகள்", feedTypes: ["துகள்தீவனம்", "மாவுத்தீவனம்", "சிலேஜ்", "கனிமக் கலவை"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "காற்றின் வெப்பநிலை", hum: "காற்றின் ஈரப்பதம்", ftemp: "தீவனத்தின் வெப்பநிலை" } },
+        hi: { name: "हिन्दी", title: "FeedTest", subtitle: "चारे और साइलेज के लिए वास्तविक सेंसर रीडिंग", welcome: "ऑफलाइन चारा और साइलेज गुणवत्ता जांच", startTesting: "जांच शुरू करें", help: "FeedTest Wi-Fi से जुड़ें। यदि फोन कहे कि इंटरनेट नहीं है, तो जुड़े रहने का विकल्प चुनें।", connected: "जुड़ा हुआ", disconnected: "डिस्कनेक्ट है", stale: "डेटा पुराना है", lastUpdate: "अंतिम अपडेट", secondsAgo: "सेकंड पहले", readingBoard: "बोर्ड से पढ़ रहा है...", noSensors: "अभी कोई सेंसर जुड़ा नहीं है। हार्डवेयर डेटा भेजने पर मान दिखाई देंगे।", noReadings: "कोई रीडिंग उपलब्ध नहीं है। हार्डवेयर कनेक्शन जांचें।", noProblem: "जो मापा गया उसमें कोई समस्या नहीं मिली।", limitedAdvice: "जो मापा गया उसमें कोई समस्या नहीं मिली।", basedOn: "आधार", of: "में से", sensorReadings: "सेंसर रीडिंग", limited: "परिणाम सीमित है", feedType: "चारे का प्रकार", checkQuality: "गुणवत्ता जांचें", exportCsv: "CSV निर्यात", history: "रीडिंग इतिहास", historyCount: "सहेजी गई वास्तविक रीडिंग", problems: "मिली समस्याएं", checksDone: "की गई जांच", checksMissing: "नहीं की गई जांच", notMeasured: "मापा नहीं गया", airTemperature: "हवा का तापमान", humidity: "हवा की नमी", feedTemperature: "चारे का तापमान", unknownSensor: "सेंसर", language: "भाषा", readings: "लाइव रीडिंग", feedTypes: ["पेलेट", "मैश", "साइलेज", "खनिज मिश्रण"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "हवा का तापमान", hum: "हवा की नमी", ftemp: "चारे का तापमान" } }
+      };
+      var latest = null;
+      var receivedAt = 0;
+      var language = document.getElementById("language");
+      var result = null;
+      var history = loadHistory();
+      function text() { return languages[language.value] || languages.en; }
+      function render() {
+        var t = text();
+        try { localStorage.setItem("feedtest-language", language.value); } catch (error) {}
+        document.documentElement.lang = language.value === "ta" ? "ta" : language.value === "hi" ? "hi" : "en";
+        document.getElementById("title").textContent = t.title;
+        document.getElementById("welcomeTitle").textContent = t.title;
+        document.getElementById("welcomeSubtitle").textContent = t.welcome;
+        document.getElementById("welcomeHelp").textContent = t.help;
+        document.getElementById("startTesting").textContent = t.startTesting;
+        document.getElementById("subtitle").textContent = t.subtitle;
+        document.getElementById("help").textContent = t.help;
+        document.getElementById("languageLabel").textContent = t.language;
+        document.getElementById("readingsHeading").textContent = t.readings;
+        document.getElementById("feedTypeLabel").textContent = t.feedType;
+        document.getElementById("checkQuality").textContent = t.checkQuality;
+        document.getElementById("exportCsv").textContent = t.exportCsv;
+        document.getElementById("historyHeading").textContent = t.history;
+        document.getElementById("problemsHeading").textContent = t.problems;
+        document.getElementById("checksHeading").textContent = t.checksDone;
+        document.getElementById("missingHeading").textContent = t.checksMissing;
+        Array.prototype.forEach.call(document.getElementById("feedType").options, function (option, index) { option.textContent = t.feedTypes[index]; });
+        document.getElementById("connection").textContent = receivedAt ? t.connected : t.disconnected;
+        document.getElementById("dot").className = receivedAt ? "dot on" : "dot";
+        var tiles = document.getElementById("tiles");
+        tiles.textContent = "";
+        var count = 0;
+        if (latest) Object.keys(latest).forEach(function (key) {
+          if (key === "ms" || latest[key] === null || typeof latest[key] !== "number") return;
+          count += 1;
+          var tile = document.createElement("article"); tile.className = "tile";
+          var name = document.createElement("div"); name.className = "tile-name"; name.textContent = (t.labels && t.labels[key]) || t.unknownSensor + " (" + key + ")";
+          var value = document.createElement("div"); value.className = "tile-value"; value.textContent = latest[key] + ((t.units && t.units[key]) || "");
+          tile.appendChild(name); tile.appendChild(value); tiles.appendChild(tile);
+        });
+        document.getElementById("empty").textContent = count ? "" : t.noSensors;
+        if (result) renderResult();
+        drawChart();
+        updateAge();
+      }
+      function loadHistory() { try { var saved = JSON.parse(localStorage.getItem("feedtest-readings") || "[]"); return Array.isArray(saved) ? saved : []; } catch (error) { return []; } }
+      function saveReading(data) {
+        var values = Object.keys(data || {}).filter(function (key) { return key !== "ms" && typeof data[key] === "number" && Number.isFinite(data[key]); });
+        if (!values.length) return;
+        history.push({ timestamp: new Date().toISOString(), ms: data.ms, readings: data });
+        history = history.slice(-360);
+        try { localStorage.setItem("feedtest-readings", JSON.stringify(history)); } catch (error) { history = history.slice(-60); }
+      }
+      function drawChart() {
+        var canvas = document.getElementById("chart"); var context = canvas.getContext("2d"); var width = canvas.width; var height = canvas.height;
+        context.clearRect(0, 0, width, height); context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--line"); context.strokeRect(0, 0, width, height);
+        var points = history.slice(-180); var keys = ["temp", "ftemp", "hum"]; var colors = ["#d66b28", "#0d6b5c", "#3f6fb5"]; var min = 0; var max = 100;
+        keys.forEach(function (key, index) { var measured = points.map(function (point) { return point.readings[key]; }).filter(function (value) { return typeof value === "number"; }); if (!measured.length) return; context.strokeStyle = colors[index]; context.lineWidth = 3; context.beginPath(); measured.forEach(function (value, pointIndex) { var x = points.length < 2 ? width / 2 : pointIndex * width / (points.length - 1); var y = height - ((value - min) / (max - min)) * height; if (pointIndex) context.lineTo(x, y); else context.moveTo(x, y); }); context.stroke(); });
+        document.getElementById("historyCount").textContent = text().historyCount + ": " + history.length;
+      }
+      function exportCsv() {
+        if (!history.length) return;
+        var keys = ["temp", "hum", "ftemp", "moist", "ph", "tds", "gas"]; var rows = ["timestamp,ms," + keys.join(",")];
+        history.forEach(function (entry) { rows.push([entry.timestamp, entry.ms].concat(keys.map(function (key) { return typeof entry.readings[key] === "undefined" || entry.readings[key] === null ? "" : entry.readings[key]; })).join(",")); });
+        var blob = new Blob([rows.join("\n")], { type: "text/csv" }); var link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "feedtest-readings.csv"; link.click(); URL.revokeObjectURL(link.href);
+      }
+      function evaluate(readings) {
+        var measured = Object.keys(readings || {}).filter(function (key) { return key !== "ms" && typeof readings[key] === "number" && Number.isFinite(readings[key]); });
+        var done = [], missing = [], problems = [], quality = "Good";
+        function addProblem(level, name, advice) { problems.push({ level: level, name: name, advice: advice }); if (level === "Poor" || (level === "Unsafe" && quality !== "Poor")) quality = level; else if (level === "Moderate" && quality === "Good") quality = level; }
+        if (typeof readings.temp === "number" && typeof readings.ftemp === "number") { done.push("Feed temperature difference"); if (readings.ftemp - readings.temp >= 5) addProblem("Poor", "Feed temperature difference", "Feed temperature is 5 C or more above air temperature."); } else missing.push("Feed temperature difference");
+        if (typeof readings.temp === "number") { done.push("Air temperature storage"); if (readings.temp > 35) addProblem("Moderate", "Air temperature storage", "Air temperature is above 35 C."); } else missing.push("Air temperature storage");
+        if (typeof readings.hum === "number") { done.push("Humidity storage"); if (readings.hum > 70) addProblem("Moderate", "Humidity storage", "Humidity is above 70 percent."); } else missing.push("Humidity storage");
+        if (typeof readings.ph === "number") { done.push("Silage pH"); if (readings.ph >= 5) addProblem("Poor", "Silage pH spoilage", "Silage pH is 5.0 or higher."); else if (readings.ph >= 4.5) addProblem("Moderate", "Silage pH weak fermentation", "Silage pH is between 4.5 and 5.0."); } else missing.push("Silage pH");
+        if (typeof readings.moist === "number") { done.push("Moisture"); } else missing.push("Moisture");
+        if (typeof readings.tds === "number") { done.push("Salt"); } else missing.push("Salt");
+        if (typeof readings.gas === "number") { done.push("Gas"); } else missing.push("Gas");
+        return { quality: measured.length ? quality : null, measured: measured.length, possible: 7, done: done, missing: missing, problems: problems, limited: measured.length < 7 };
+      }
+      function list(parent, items) { parent.textContent = ""; items.forEach(function (item) { var li = document.createElement("li"); li.textContent = item; parent.appendChild(li); }); }
+      function renderResult() {
+        var t = text(); var panel = document.getElementById("resultPanel"); panel.hidden = false;
+        var quality = document.getElementById("resultQuality"); quality.textContent = result.quality || t.noReadings; quality.className = result.quality ? "result-" + result.quality.toLowerCase() : "stale";
+        document.getElementById("resultAdvice").textContent = result.quality === "Good" ? t.noProblem : result.quality ? t.limitedAdvice : t.noReadings;
+        document.getElementById("resultCoverage").textContent = result.quality ? t.basedOn + " " + result.measured + " " + t.of + " " + result.possible + " " + t.sensorReadings + (result.limited ? " - " + t.limited : "") : "";
+        list(document.getElementById("problems"), result.problems.map(function (problem) { return problem.name + ": " + problem.advice; }));
+        list(document.getElementById("checksDone"), result.done);
+        list(document.getElementById("checksMissing"), result.missing);
+      }
+      document.getElementById("checkQuality").addEventListener("click", function () { result = evaluate(latest); renderResult(); });
+      document.getElementById("exportCsv").addEventListener("click", exportCsv);
+      document.getElementById("startTesting").addEventListener("click", function () { document.querySelector("main").classList.remove("dashboard-hidden"); });
+      function updateAge() {
+        var t = text(); var age = receivedAt ? Math.floor((Date.now() - receivedAt) / 1000) : 0;
+        var ageText = receivedAt ? t.lastUpdate + ": " + age + " " + t.secondsAgo : t.readingBoard;
+        var stale = receivedAt && age > 5;
+        document.getElementById("lastUpdate").textContent = stale ? ageText + " - " + t.stale : ageText;
+        document.getElementById("lastUpdate").className = stale ? "meta stale" : "meta";
+      }
+      function poll() {
+        fetch("/data", { cache: "no-store" }).then(function (response) { if (!response.ok) throw new Error("HTTP"); return response.json(); }).then(function (data) {
+          latest = data; receivedAt = Date.now(); saveReading(data); render();
+        }).catch(function () { render(); });
+      }
+      language.addEventListener("change", function () { render(); });
+      try { language.value = localStorage.getItem("feedtest-language") || "en"; } catch (error) { language.value = "en"; }
+      render(); poll(); setInterval(poll, 1000); setInterval(updateAge, 1000);
+    }());
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "English",
+  "title": "FeedTest",
+  "subtitle": "Real sensor readings for feed and silage",
+  "help": "Join the Wi-Fi network FeedTest. If your phone says there is no internet, choose to stay connected.",
+  "connected": "Connected",
+  "disconnected": "Disconnected",
+  "stale": "Data is stale",
+  "lastUpdate": "Last update",
+  "secondsAgo": "seconds ago",
+  "readingBoard": "Reading the board...",
+  "noSensors": "No sensor is connected yet. Values will appear when hardware sends them.",
+  "notMeasured": "Not measured",
+  "airTemperature": "Air temperature",
+  "humidity": "Air humidity",
+  "feedTemperature": "Feed temperature",
+  "unknownSensor": "Sensor",
+  "language": "Language"
+}

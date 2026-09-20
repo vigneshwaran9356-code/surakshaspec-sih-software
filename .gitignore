@@ -1,0 +1,6 @@
+.pio/
+.vscode/
+node_modules/
+*.pyc
+__pycache__/
+*.log
