@@ -6,7 +6,7 @@
 #include <ESP8266WiFi.h>
 
 #define HAS_DHT11 1
-#define HAS_LM35 1
+#define HAS_LM35 0
 #define CAPTIVE_PORTAL_ENABLED 1
 
 constexpr uint8_t DHT_PIN = D2;
