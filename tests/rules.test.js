@@ -1,5 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateReadings } from '../app/rules.js';
+import { buildVoiceSentence } from '../app/voice.js';
+import en from '../app/locales/en.json';
+import ta from '../app/locales/ta.json';
+import hi from '../app/locales/hi.json';
+
+const localeKeys = ['voiceQualityGood', 'voiceQualityModerate', 'voiceQualityPoor', 'voiceQualityUnsafe', 'voiceNoProblem', 'voiceLimited', 'voiceNoSensorData', 'voiceProblemNames', 'voiceProblemAdvice'];
+
+describe('voice locales and sentence builder', () => {
+  it('has every voice sentence key in all three languages', () => {
+    localeKeys.forEach((key) => {
+      expect(en).toHaveProperty(key);
+      expect(ta).toHaveProperty(key);
+      expect(hi).toHaveProperty(key);
+    });
+    Object.keys(en.voiceProblemNames).forEach((key) => {
+      expect(ta.voiceProblemNames).toHaveProperty(key);
+      expect(hi.voiceProblemNames).toHaveProperty(key);
+    });
+    Object.keys(en.voiceProblemAdvice).forEach((key) => {
+      expect(ta.voiceProblemAdvice).toHaveProperty(key);
+      expect(hi.voiceProblemAdvice).toHaveProperty(key);
+    });
+  });
+
+  it('returns no speech when there are no readings', () => {
+    expect(buildVoiceSentence({ measuredCount: 0, quality: null, problems: [], limited: true }, en)).toBe('');
+  });
+});
 
  describe('evaluateReadings', () => {
   it('stops without a quality result when no sensor is measured', () => {

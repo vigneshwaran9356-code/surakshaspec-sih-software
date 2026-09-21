@@ -15,5 +15,32 @@
   "humidity": "Air humidity",
   "feedTemperature": "Feed temperature",
   "unknownSensor": "Sensor",
-  "language": "Language"
+  "language": "Language",
+  "voiceQualityGood": "Good",
+  "voiceQualityModerate": "Moderate",
+  "voiceQualityPoor": "Poor",
+  "voiceQualityUnsafe": "Unsafe",
+  "voiceNoProblem": "No problem was found in the measured values.",
+  "voiceLimited": "The result is limited because some sensors are not measured.",
+  "voiceNoSensorData": "No sensor data.",
+  "voiceProblemNames": {
+    "feedTemperatureDifference": "Feed temperature difference",
+    "airTemperatureStorage": "Air temperature storage",
+    "humidityStorage": "Humidity storage",
+    "silagePhSpoilage": "Silage pH spoilage",
+    "silagePhWeak": "Silage pH weak fermentation",
+    "moisture": "Moisture",
+    "saltHigh": "Salt",
+    "gasHigh": "Gas"
+  },
+  "voiceProblemAdvice": {
+    "feedTemperatureHigh": "Feed temperature is 5 degrees or more above air temperature.",
+    "airTemperatureHigh": "Air temperature is above 35 degrees.",
+    "humidityHigh": "Humidity is above 70 percent.",
+    "silagePhSpoilage": "Silage pH is 5 or higher.",
+    "silagePhWeak": "Silage pH is between 4.5 and 5.",
+    "moistureHigh": "Moisture is too high for this feed.",
+    "saltHigh": "Salt reading is high.",
+    "gasHigh": "Gas reading is high."
+  }
 }

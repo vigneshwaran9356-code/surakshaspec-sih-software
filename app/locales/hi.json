@@ -15,5 +15,32 @@
   "humidity": "हवा की नमी",
   "feedTemperature": "चारे का तापमान",
   "unknownSensor": "सेंसर",
-  "language": "भाषा"
+  "language": "भाषा",
+  "voiceQualityGood": "अच्छा",
+  "voiceQualityModerate": "मध्यम",
+  "voiceQualityPoor": "खराब",
+  "voiceQualityUnsafe": "असुरक्षित",
+  "voiceNoProblem": "मापे गए मानों में कोई समस्या नहीं मिली।",
+  "voiceLimited": "कुछ सेंसर मापे नहीं गए हैं, इसलिए परिणाम सीमित है।",
+  "voiceNoSensorData": "सेंसर डेटा नहीं है।",
+  "voiceProblemNames": {
+    "feedTemperatureDifference": "चारे के तापमान का अंतर",
+    "airTemperatureStorage": "हवा के तापमान का भंडारण",
+    "humidityStorage": "नमी का भंडारण",
+    "silagePhSpoilage": "साइलेज pH खराब",
+    "silagePhWeak": "साइलेज pH कमजोर किण्वन",
+    "moisture": "नमी",
+    "saltHigh": "नमक",
+    "gasHigh": "गैस"
+  },
+  "voiceProblemAdvice": {
+    "feedTemperatureHigh": "चारे का तापमान हवा के तापमान से 5 डिग्री या अधिक ऊपर है।",
+    "airTemperatureHigh": "हवा का तापमान 35 डिग्री से ऊपर है।",
+    "humidityHigh": "नमी 70 प्रतिशत से ऊपर है।",
+    "silagePhSpoilage": "साइलेज pH 5 या उससे अधिक है।",
+    "silagePhWeak": "साइलेज pH 4.5 और 5 के बीच है।",
+    "moistureHigh": "इस चारे के लिए नमी बहुत अधिक है।",
+    "saltHigh": "नमक की रीडिंग अधिक है।",
+    "gasHigh": "गैस की रीडिंग अधिक है।"
+  }
 }

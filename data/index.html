@@ -13,6 +13,11 @@
     main { width: min(100% - 2rem, 42rem); margin: auto; padding: 1rem 0 2rem; }
     main.dashboard-hidden > :not(#welcome) { display: none; }
     .welcome { min-height: 80vh; display: grid; align-content: center; gap: 1rem; text-align: center; }
+    .welcome.leaving { animation: welcome-out .35s ease forwards; }
+    main.dashboard-enter > :not(#welcome) { animation: dashboard-in .45s ease both; }
+    @keyframes welcome-out { to { opacity: 0; transform: translateY(-1rem); } }
+    @keyframes dashboard-in { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { .welcome.leaving, main.dashboard-enter > :not(#welcome) { animation: none; } }
     .welcome-mark { width: 5rem; height: 5rem; display: grid; place-items: center; margin: auto; border-radius: 1.2rem; background: var(--accent); color: #fff; font-size: 2.5rem; font-weight: 800; }
     .welcome h1 { font-size: 2.5rem; }
     .welcome button { width: 100%; max-width: 20rem; margin: auto; }
@@ -36,7 +41,15 @@
     .controls { display: grid; gap: .7rem; }
     .controls label { font-weight: 700; }
     .controls select { width: 100%; }
-    button { min-height: 2.75rem; padding: .5rem .85rem; border: 0; border-radius: .5rem; background: var(--accent); color: #fff; font: inherit; font-weight: 700; }
+    button { min-height: 2.75rem; padding: .5rem .85rem; border: 0; border-radius: .5rem; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+    .voice-controls { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+    .voice-controls button { min-width: 0; }
+    .voice-settings { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; align-items: end; }
+    .voice-settings label { display: grid; gap: .25rem; }
+    .voice-settings input[type="checkbox"] { width: 1.2rem; height: 1.2rem; }
+    .feedback { position: fixed; z-index: 10; left: 1rem; right: 1rem; bottom: 1rem; display: none; padding: .85rem 1rem; border-radius: .6rem; background: var(--accent); color: #fff; text-align: center; font-weight: 700; box-shadow: 0 4px 16px rgba(0, 0, 0, .2); }
+    .feedback.visible { display: block; }
+    .feedback.error { background: var(--bad); }
     .result-good { color: var(--good); }
     .result-moderate, .result-poor, .result-unsafe { color: var(--bad); }
     ul { margin: .5rem 0 0; padding-left: 1.3rem; }
@@ -62,24 +75,56 @@
       <label for="feedType" id="feedTypeLabel"></label>
       <select id="feedType"><option value="pellet">Pellet</option><option value="mash">Mash</option><option value="silage">Silage</option><option value="mineral">Mineral mixture</option></select>
       <button id="checkQuality" type="button"></button>
+      <div class="voice-controls"><button id="speakResult" type="button"></button><button id="testVoice" type="button">Test voice</button></div>
+      <div class="voice-settings"><label><span>Mute voice</span><input id="muteVoice" type="checkbox"></label><label for="voiceRate">Voice speed<select id="voiceRate"><option value="0.8">0.8x</option><option value="1" selected>1x</option><option value="1.2">1.2x</option></select></label></div>
       <button id="exportCsv" type="button"></button>
     </section>
     <section class="panel"><h2 id="historyHeading"></h2><canvas id="chart" width="640" height="240"></canvas><p class="meta" id="historyCount"></p></section>
     <section class="panel" id="resultPanel" hidden aria-live="polite"><h2 id="resultQuality"></h2><p id="resultAdvice"></p><p id="resultCoverage"></p><h3 id="problemsHeading"></h3><ul id="problems"></ul><h3 id="checksHeading"></h3><ul id="checksDone"></ul><h3 id="missingHeading"></h3><ul id="checksMissing"></ul></section>
   </main>
+  <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
   <script>
     (function () {
       var languages = {
-        en: { name: "English", title: "FeedTest", subtitle: "Real sensor readings for feed and silage", welcome: "Offline feed and silage quality testing", startTesting: "Start testing", help: "Join the Wi-Fi network FeedTest. If your phone says there is no internet, choose to stay connected.", connected: "Connected", disconnected: "Disconnected", stale: "Data is stale", lastUpdate: "Last update", secondsAgo: "seconds ago", readingBoard: "Reading the board...", noSensors: "No sensor is connected yet. Values will appear when hardware sends them.", noReadings: "No readings available. Check the hardware connection.", noProblem: "No problem found in what was measured.", limitedAdvice: "No problem found in what was measured.", basedOn: "Based on", of: "of", sensorReadings: "sensor readings", limited: "Result is limited", feedType: "Feed type", checkQuality: "Check quality", exportCsv: "Export CSV", history: "Reading history", historyCount: "Saved real readings", problems: "Problems found", checksDone: "Checks done", checksMissing: "Checks not done", notMeasured: "Not measured", airTemperature: "Air temperature", humidity: "Air humidity", feedTemperature: "Feed temperature", unknownSensor: "Sensor", language: "Language", readings: "Live readings", feedTypes: ["Pellet", "Mash", "Silage", "Mineral mixture"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "Air temperature", hum: "Air humidity", ftemp: "Feed temperature" } },
-        ta: { name: "தமிழ்", title: "FeedTest", subtitle: "தீவனம் மற்றும் சிலேஜுக்கான உண்மையான சென்சார் அளவீடுகள்", welcome: "ஆஃப்லைன் தீவனம் மற்றும் சிலேஜ் தரச் சோதனை", startTesting: "சோதனையைத் தொடங்கவும்", help: "FeedTest Wi-Fi-யில் இணையுங்கள். இணையம் இல்லை என்று தொலைபேசி சொன்னால், இணைப்பைத் தொடரவும் என்பதைத் தேர்ந்தெடுக்கவும்.", connected: "இணைக்கப்பட்டது", disconnected: "இணைப்பு இல்லை", stale: "தரவு பழையது", lastUpdate: "கடைசி புதுப்பிப்பு", secondsAgo: "விநாடிகளுக்கு முன்", readingBoard: "போர்டைப் படிக்கிறது...", noSensors: "இன்னும் சென்சார் இணைக்கப்படவில்லை. சாதனம் தரவை அனுப்பும்போது மதிப்புகள் தோன்றும்.", noReadings: "அளவீடுகள் இல்லை. வன்பொருள் இணைப்பைச் சரிபார்க்கவும்.", noProblem: "அளவிடப்பட்டவற்றில் எந்தப் பிரச்சினையும் இல்லை.", limitedAdvice: "அளவிடப்பட்டவற்றில் எந்தப் பிரச்சினையும் இல்லை.", basedOn: "அடிப்படை", of: "இல்", sensorReadings: "சென்சார் அளவீடுகள்", limited: "முடிவு வரம்புக்குட்பட்டது", feedType: "தீவன வகை", checkQuality: "தரத்தைச் சரிபார்க்கவும்", exportCsv: "CSV ஏற்றுமதி", history: "அளவீட்டு வரலாறு", historyCount: "சேமிக்கப்பட்ட உண்மையான அளவீடுகள்", problems: "கண்டறியப்பட்ட பிரச்சினைகள்", checksDone: "செய்த சோதனைகள்", checksMissing: "செய்யாத சோதனைகள்", notMeasured: "அளவிடப்படவில்லை", airTemperature: "காற்றின் வெப்பநிலை", humidity: "காற்றின் ஈரப்பதம்", feedTemperature: "தீவனத்தின் வெப்பநிலை", unknownSensor: "சென்சார்", language: "மொழி", readings: "நேரடி அளவீடுகள்", feedTypes: ["துகள்தீவனம்", "மாவுத்தீவனம்", "சிலேஜ்", "கனிமக் கலவை"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "காற்றின் வெப்பநிலை", hum: "காற்றின் ஈரப்பதம்", ftemp: "தீவனத்தின் வெப்பநிலை" } },
-        hi: { name: "हिन्दी", title: "FeedTest", subtitle: "चारे और साइलेज के लिए वास्तविक सेंसर रीडिंग", welcome: "ऑफलाइन चारा और साइलेज गुणवत्ता जांच", startTesting: "जांच शुरू करें", help: "FeedTest Wi-Fi से जुड़ें। यदि फोन कहे कि इंटरनेट नहीं है, तो जुड़े रहने का विकल्प चुनें।", connected: "जुड़ा हुआ", disconnected: "डिस्कनेक्ट है", stale: "डेटा पुराना है", lastUpdate: "अंतिम अपडेट", secondsAgo: "सेकंड पहले", readingBoard: "बोर्ड से पढ़ रहा है...", noSensors: "अभी कोई सेंसर जुड़ा नहीं है। हार्डवेयर डेटा भेजने पर मान दिखाई देंगे।", noReadings: "कोई रीडिंग उपलब्ध नहीं है। हार्डवेयर कनेक्शन जांचें।", noProblem: "जो मापा गया उसमें कोई समस्या नहीं मिली।", limitedAdvice: "जो मापा गया उसमें कोई समस्या नहीं मिली।", basedOn: "आधार", of: "में से", sensorReadings: "सेंसर रीडिंग", limited: "परिणाम सीमित है", feedType: "चारे का प्रकार", checkQuality: "गुणवत्ता जांचें", exportCsv: "CSV निर्यात", history: "रीडिंग इतिहास", historyCount: "सहेजी गई वास्तविक रीडिंग", problems: "मिली समस्याएं", checksDone: "की गई जांच", checksMissing: "नहीं की गई जांच", notMeasured: "मापा नहीं गया", airTemperature: "हवा का तापमान", humidity: "हवा की नमी", feedTemperature: "चारे का तापमान", unknownSensor: "सेंसर", language: "भाषा", readings: "लाइव रीडिंग", feedTypes: ["पेलेट", "मैश", "साइलेज", "खनिज मिश्रण"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "हवा का तापमान", hum: "हवा की नमी", ftemp: "चारे का तापमान" } }
+        en: { name: "English", lang: "en-IN", title: "FeedTest", subtitle: "Real sensor readings for feed and silage", welcome: "Offline feed and silage quality testing", startTesting: "Start testing", help: "Join the Wi-Fi network FeedTest. If your phone says there is no internet, choose to stay connected.", connected: "Connected", disconnected: "Disconnected", stale: "Data is stale", lastUpdate: "Last update", secondsAgo: "seconds ago", readingBoard: "Reading the board...", noSensors: "No sensor is connected yet. Values will appear when hardware sends them.", noReadings: "No readings available. Check the hardware connection.", noProblem: "No problem found in what was measured.", limitedAdvice: "No problem found in what was measured.", basedOn: "Based on", of: "of", sensorReadings: "sensor readings", limited: "Result is limited", feedType: "Feed type", checkQuality: "Check quality", speakResult: "Speak result", voiceCommand: "Voice command", listening: "Listening...", voiceUnsupported: "Voice is not supported on this browser.", voiceNoResult: "No voice command was heard.", exportCsv: "Export CSV", history: "Reading history", historyCount: "Saved real readings", problems: "Problems found", checksDone: "Checks done", checksMissing: "Checks not done", notMeasured: "Not measured", airTemperature: "Air temperature", humidity: "Air humidity", feedTemperature: "Feed temperature", unknownSensor: "Sensor", language: "Language", readings: "Live readings", feedTypes: ["Pellet", "Mash", "Silage", "Mineral mixture"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "Air temperature", hum: "Air humidity", ftemp: "Feed temperature" } },
+        ta: { name: "தமிழ்", lang: "ta-IN", title: "FeedTest", subtitle: "தீவனம் மற்றும் சிலேஜுக்கான உண்மையான சென்சார் அளவீடுகள்", welcome: "ஆஃப்லைன் தீவனம் மற்றும் சிலேஜ் தரச் சோதனை", startTesting: "சோதனையைத் தொடங்கவும்", help: "FeedTest Wi-Fi-யில் இணையுங்கள். இணையம் இல்லை என்று தொலைபேசி சொன்னால், இணைப்பைத் தொடரவும் என்பதைத் தேர்ந்தெடுக்கவும்.", connected: "இணைக்கப்பட்டது", disconnected: "இணைப்பு இல்லை", stale: "தரவு பழையது", lastUpdate: "கடைசி புதுப்பிப்பு", secondsAgo: "விநாடிகளுக்கு முன்", readingBoard: "போர்டைப் படிக்கிறது...", noSensors: "இன்னும் சென்சார் இணைக்கப்படவில்லை. சாதனம் தரவை அனுப்பும்போது மதிப்புகள் தோன்றும்.", noReadings: "அளவீடுகள் இல்லை. வன்பொருள் இணைப்பைச் சரிபார்க்கவும்.", noProblem: "அளவிடப்பட்டவற்றில் எந்தப் பிரச்சினையும் இல்லை.", limitedAdvice: "அளவிடப்பட்டவற்றில் எந்தப் பிரச்சினையும் இல்லை.", basedOn: "அடிப்படை", of: "இல்", sensorReadings: "சென்சார் அளவீடுகள்", limited: "முடிவு வரம்புக்குட்பட்டது", feedType: "தீவன வகை", checkQuality: "தரத்தைச் சரிபார்க்கவும்", speakResult: "முடிவைக் கேட்கவும்", voiceCommand: "குரல் கட்டளை", listening: "கேட்கிறது...", voiceUnsupported: "இந்த உலாவியில் குரல் வசதி இல்லை.", voiceNoResult: "குரல் கட்டளை கேட்கப்படவில்லை.", exportCsv: "CSV ஏற்றுமதி", history: "அளவீட்டு வரலாறு", historyCount: "சேமிக்கப்பட்ட உண்மையான அளவீடுகள்", problems: "கண்டறியப்பட்ட பிரச்சினைகள்", checksDone: "செய்த சோதனைகள்", checksMissing: "செய்யாத சோதனைகள்", notMeasured: "அளவிடப்படவில்லை", airTemperature: "காற்றின் வெப்பநிலை", humidity: "காற்றின் ஈரப்பதம்", feedTemperature: "தீவனத்தின் வெப்பநிலை", unknownSensor: "சென்சார்", language: "மொழி", readings: "நேரடி அளவீடுகள்", feedTypes: ["துகள்தீவனம்", "மாவுத்தீவனம்", "சிலேஜ்", "கனிமக் கலவை"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "காற்றின் வெப்பநிலை", hum: "காற்றின் ஈரப்பதம்", ftemp: "தீவனத்தின் வெப்பநிலை" } },
+        hi: { name: "हिन्दी", lang: "hi-IN", title: "FeedTest", subtitle: "चारे और साइलेज के लिए वास्तविक सेंसर रीडिंग", welcome: "ऑफलाइन चारा और साइलेज गुणवत्ता जांच", startTesting: "जांच शुरू करें", help: "FeedTest Wi-Fi से जुड़ें। यदि फोन कहे कि इंटरनेट नहीं है, तो जुड़े रहने का विकल्प चुनें।", connected: "जुड़ा हुआ", disconnected: "डिस्कनेक्ट है", stale: "डेटा पुराना है", lastUpdate: "अंतिम अपडेट", secondsAgo: "सेकंड पहले", readingBoard: "बोर्ड से पढ़ रहा है...", noSensors: "अभी कोई सेंसर जुड़ा नहीं है। हार्डवेयर डेटा भेजने पर मान दिखाई देंगे।", noReadings: "कोई रीडिंग उपलब्ध नहीं है। हार्डवेयर कनेक्शन जांचें।", noProblem: "जो मापा गया उसमें कोई समस्या नहीं मिली।", limitedAdvice: "जो मापा गया उसमें कोई समस्या नहीं मिली।", basedOn: "आधार", of: "में से", sensorReadings: "सेंसर रीडिंग", limited: "परिणाम सीमित है", feedType: "चारे का प्रकार", checkQuality: "गुणवत्ता जांचें", speakResult: "नतीजा सुनें", voiceCommand: "वॉइस कमांड", listening: "सुन रहा है...", voiceUnsupported: "इस ब्राउज़र में आवाज की सुविधा उपलब्ध नहीं है।", voiceNoResult: "कोई वॉइस कमांड नहीं मिली।", exportCsv: "CSV निर्यात", history: "रीडिंग इतिहास", historyCount: "सहेजी गई वास्तविक रीडिंग", problems: "मिली समस्याएं", checksDone: "की गई जांच", checksMissing: "नहीं की गई जांच", notMeasured: "मापा नहीं गया", airTemperature: "हवा का तापमान", humidity: "हवा की नमी", feedTemperature: "चारे का तापमान", unknownSensor: "सेंसर", language: "भाषा", readings: "लाइव रीडिंग", feedTypes: ["पेलेट", "मैश", "साइलेज", "खनिज मिश्रण"], units: { temp: "°C", hum: "%", ftemp: "°C" }, labels: { temp: "हवा का तापमान", hum: "हवा की नमी", ftemp: "चारे का तापमान" } }
       };
-      var latest = null;
+      var voiceText = {
+        en: { quality: { Good: "Good", Moderate: "Moderate", Poor: "Poor", Unsafe: "Unsafe" }, noProblem: "No problem was found in the measured values.", limited: "The result is limited because some sensors are not measured.", noReadings: "No sensor data.", problemNames: { feedTemperatureDifference: "Feed temperature difference", airTemperatureStorage: "Air temperature storage", humidityStorage: "Humidity storage", silagePhSpoilage: "Silage pH spoilage", silagePhWeak: "Silage pH weak fermentation", moisture: "Moisture", saltHigh: "Salt", gasHigh: "Gas" }, problemAdvice: { feedTemperatureHigh: "Feed temperature is 5 degrees or more above air temperature.", airTemperatureHigh: "Air temperature is above 35 degrees.", humidityHigh: "Humidity is above 70 percent.", silagePhSpoilage: "Silage pH is 5 or higher.", silagePhWeak: "Silage pH is between 4.5 and 5.", moistureHigh: "Moisture is too high for this feed.", saltHigh: "Salt reading is high.", gasHigh: "Gas reading is high." } },
+        ta: { quality: { Good: "நல்லது", Moderate: "மிதமானது", Poor: "மோசமானது", Unsafe: "பாதுகாப்பற்றது" }, noProblem: "அளவிடப்பட்ட மதிப்புகளில் எந்தப் பிரச்சினையும் இல்லை.", limited: "சில சென்சார்கள் அளவிடப்படாததால் முடிவு வரம்புக்குட்பட்டது.", noReadings: "சென்சார் தரவு இல்லை.", problemNames: { feedTemperatureDifference: "தீவன வெப்பநிலை வேறுபாடு", airTemperatureStorage: "காற்று வெப்பநிலை சேமிப்பு", humidityStorage: "ஈரப்பத சேமிப்பு", silagePhSpoilage: "சிலேஜ் pH கெடுதல்", silagePhWeak: "சிலேஜ் pH பலவீன நொதித்தல்", moisture: "ஈரப்பதம்", saltHigh: "உப்பு", gasHigh: "வாயு" }, problemAdvice: { feedTemperatureHigh: "தீவன வெப்பநிலை காற்று வெப்பநிலையை விட 5 டிகிரி அல்லது அதிகமாக உள்ளது.", airTemperatureHigh: "காற்று வெப்பநிலை 35 டிகிரிக்கு மேல் உள்ளது.", humidityHigh: "ஈரப்பதம் 70 சதவீதத்திற்கு மேல் உள்ளது.", silagePhSpoilage: "சிலேஜ் pH 5 அல்லது அதற்கு மேல் உள்ளது.", silagePhWeak: "சிலேஜ் pH 4.5 முதல் 5 வரை உள்ளது.", moistureHigh: "இந்த தீவனத்திற்கு ஈரப்பதம் அதிகமாக உள்ளது.", saltHigh: "உப்பு அளவு அதிகமாக உள்ளது.", gasHigh: "வாயு அளவு அதிகமாக உள்ளது." } },
+        hi: { quality: { Good: "अच्छा", Moderate: "मध्यम", Poor: "खराब", Unsafe: "असुरक्षित" }, noProblem: "मापे गए मानों में कोई समस्या नहीं मिली।", limited: "कुछ सेंसर मापे नहीं गए हैं, इसलिए परिणाम सीमित है।", noReadings: "सेंसर डेटा नहीं है।", problemNames: { feedTemperatureDifference: "चारे के तापमान का अंतर", airTemperatureStorage: "हवा के तापमान का भंडारण", humidityStorage: "नमी का भंडारण", silagePhSpoilage: "साइलेज pH खराब", silagePhWeak: "साइलेज pH कमजोर किण्वन", moisture: "नमी", saltHigh: "नमक", gasHigh: "गैस" }, problemAdvice: { feedTemperatureHigh: "चारे का तापमान हवा के तापमान से 5 डिग्री या अधिक ऊपर है।", airTemperatureHigh: "हवा का तापमान 35 डिग्री से ऊपर है।", humidityHigh: "नमी 70 प्रतिशत से ऊपर है।", silagePhSpoilage: "साइलेज pH 5 या उससे अधिक है।", silagePhWeak: "साइलेज pH 4.5 और 5 के बीच है।", moistureHigh: "इस चारे के लिए नमी बहुत अधिक है।", saltHigh: "नमक की रीडिंग अधिक है।", gasHigh: "गैस की रीडिंग अधिक है।" } }
+      };
+      var feedbackText = {
+        en: { noHardware: "Hardware not connected. Connect the sensors and try again.", success: "Setup successful. Sensor readings received and quality check completed.", noResult: "No result available yet.", noHistory: "No readings available to export.", voiceUnsupported: "Voice is unavailable in this sign-in browser. Open FeedTest in Chrome for voice assistance." },
+        ta: { noHardware: "வன்பொருள் இணைக்கப்படவில்லை. சென்சார்களை இணைத்து மீண்டும் முயற்சிக்கவும்.", success: "அமைப்பு வெற்றிகரமாக முடிந்தது. சென்சார் அளவீடுகள் கிடைத்தன.", noResult: "முடிவு இன்னும் கிடைக்கவில்லை.", noHistory: "ஏற்றுமதி செய்ய அளவீடுகள் இல்லை.", voiceUnsupported: "இந்த உள்நுழைவு உலாவியில் குரல் வசதி இல்லை. குரல் உதவிக்கு FeedTest-ஐ Chrome-ல் திறக்கவும்." },
+        hi: { noHardware: "हार्डवेयर जुड़ा नहीं है। सेंसर जोड़कर फिर कोशिश करें।", success: "सेटअप सफल हुआ। सेंसर रीडिंग मिली और गुणवत्ता जांच पूरी हुई।", noResult: "अभी कोई परिणाम उपलब्ध नहीं है।", noHistory: "निर्यात करने के लिए कोई रीडिंग नहीं है।", voiceUnsupported: "इस साइन-इन ब्राउज़र में आवाज की सुविधा नहीं है। वॉइस सहायता के लिए FeedTest को Chrome में खोलें।" }
+      };
+      var latest = loadLastReading();
       var receivedAt = 0;
+      var isOffline = false;
+      var testingStarted = false;
+      var muted = loadVoiceSetting("feedtest-voice-muted", false);
+      var voiceRate = loadVoiceSetting("feedtest-voice-rate", 1);
+      var audioContext = null;
+      var previousProblemKeys = {};
+      var problemAlertTimes = {};
       var language = document.getElementById("language");
       var result = null;
       var history = loadHistory();
+      var renderedLanguage = "";
       function text() { return languages[language.value] || languages.en; }
+      function feedback(message, isError) {
+        var element = document.getElementById("feedback");
+        element.textContent = message;
+        element.className = "feedback visible" + (isError ? " error" : "");
+        window.clearTimeout(feedback.timer);
+        feedback.timer = window.setTimeout(function () { element.className = "feedback"; }, 4000);
+      }
+      function feedbackLanguage() { return feedbackText[language.value] || feedbackText.en; }
+      function hasSensorReadings() {
+        return latest && Object.keys(latest).some(function (key) { return key !== "ms" && typeof latest[key] === "number" && Number.isFinite(latest[key]); });
+      }
       function render() {
         var t = text();
         try { localStorage.setItem("feedtest-language", language.value); } catch (error) {}
@@ -95,13 +140,19 @@
         document.getElementById("readingsHeading").textContent = t.readings;
         document.getElementById("feedTypeLabel").textContent = t.feedType;
         document.getElementById("checkQuality").textContent = t.checkQuality;
+        document.getElementById("speakResult").textContent = t.speakResult;
+        document.getElementById("muteVoice").checked = muted;
+        document.getElementById("voiceRate").value = String(voiceRate);
         document.getElementById("exportCsv").textContent = t.exportCsv;
         document.getElementById("historyHeading").textContent = t.history;
         document.getElementById("problemsHeading").textContent = t.problems;
         document.getElementById("checksHeading").textContent = t.checksDone;
         document.getElementById("missingHeading").textContent = t.checksMissing;
-        Array.prototype.forEach.call(document.getElementById("feedType").options, function (option, index) { option.textContent = t.feedTypes[index]; });
-        document.getElementById("connection").textContent = receivedAt ? t.connected : t.disconnected;
+        if (renderedLanguage !== language.value) {
+          Array.prototype.forEach.call(document.getElementById("feedType").options, function (option, index) { option.textContent = t.feedTypes[index]; });
+          renderedLanguage = language.value;
+        }
+        document.getElementById("connection").textContent = isOffline && latest ? "Offline - showing last saved reading" : receivedAt ? t.connected : t.disconnected;
         document.getElementById("dot").className = receivedAt ? "dot on" : "dot";
         var tiles = document.getElementById("tiles");
         tiles.textContent = "";
@@ -120,12 +171,16 @@
         updateAge();
       }
       function loadHistory() { try { var saved = JSON.parse(localStorage.getItem("feedtest-readings") || "[]"); return Array.isArray(saved) ? saved : []; } catch (error) { return []; } }
+      function loadLastReading() { try { var saved = JSON.parse(localStorage.getItem("feedtest-last-reading") || "null"); return saved && typeof saved === "object" ? saved : null; } catch (error) { return null; } }
       function saveReading(data) {
         var values = Object.keys(data || {}).filter(function (key) { return key !== "ms" && typeof data[key] === "number" && Number.isFinite(data[key]); });
         if (!values.length) return;
         history.push({ timestamp: new Date().toISOString(), ms: data.ms, readings: data });
         history = history.slice(-360);
-        try { localStorage.setItem("feedtest-readings", JSON.stringify(history)); } catch (error) { history = history.slice(-60); }
+        try {
+          localStorage.setItem("feedtest-readings", JSON.stringify(history));
+          localStorage.setItem("feedtest-last-reading", JSON.stringify(data));
+        } catch (error) { history = history.slice(-60); }
       }
       function drawChart() {
         var canvas = document.getElementById("chart"); var context = canvas.getContext("2d"); var width = canvas.width; var height = canvas.height;
@@ -154,6 +209,22 @@
         return { quality: measured.length ? quality : null, measured: measured.length, possible: 7, done: done, missing: missing, problems: problems, limited: measured.length < 7 };
       }
       function list(parent, items) { parent.textContent = ""; items.forEach(function (item) { var li = document.createElement("li"); li.textContent = item; parent.appendChild(li); }); }
+      function openDashboard() {
+        var main = document.querySelector("main");
+        var welcome = document.getElementById("welcome");
+        if (!main.classList.contains("dashboard-hidden")) return;
+        testingStarted = true;
+        unlockAudio();
+        welcome.classList.add("leaving");
+        main.classList.remove("dashboard-hidden");
+        main.classList.add("dashboard-enter");
+        window.setTimeout(function () {
+          welcome.hidden = true;
+          welcome.classList.remove("leaving");
+          main.classList.remove("dashboard-enter");
+          window.scrollTo(0, 0);
+        }, 350);
+      }
       function renderResult() {
         var t = text(); var panel = document.getElementById("resultPanel"); panel.hidden = false;
         var quality = document.getElementById("resultQuality"); quality.textContent = result.quality || t.noReadings; quality.className = result.quality ? "result-" + result.quality.toLowerCase() : "stale";
@@ -163,9 +234,85 @@
         list(document.getElementById("checksDone"), result.done);
         list(document.getElementById("checksMissing"), result.missing);
       }
-      document.getElementById("checkQuality").addEventListener("click", function () { result = evaluate(latest); renderResult(); });
-      document.getElementById("exportCsv").addEventListener("click", exportCsv);
-      document.getElementById("startTesting").addEventListener("click", function () { document.querySelector("main").classList.remove("dashboard-hidden"); });
+      function loadVoiceSetting(key, fallback) { try { var value = localStorage.getItem(key); return value === null ? fallback : JSON.parse(value); } catch (error) { return fallback; } }
+      function saveVoiceSetting(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) {} }
+      function buildVoiceSentence(current) {
+        if (!current || !Number.isFinite(current.measured) || current.measured < 1 || !current.quality) return "";
+        var voice = voiceText[language.value] || voiceText.en;
+        var parts = [voice.quality[current.quality] || current.quality];
+        (current.problems || []).forEach(function (problem) { parts.push((voice.problemNames[problem.name] || problem.name) + ". " + (voice.problemAdvice[problem.advice] || problem.advice)); });
+        if (!current.problems || !current.problems.length) parts.push(voice.noProblem);
+        if (current.limited) parts.push(voice.limited);
+        return parts.join(" ");
+      }
+      function unlockAudio() { if (!audioContext && window.AudioContext) audioContext = new AudioContext(); if (audioContext && audioContext.state === "suspended") audioContext.resume(); }
+      function playAlertBeep(level) {
+        if (muted || !audioContext) return;
+        var count = level === "Poor" ? 2 : 1;
+        var duration = level === "Unsafe" ? 0.55 : 0.12;
+        for (var index = 0; index < count; index += 1) {
+          var start = audioContext.currentTime + index * (duration + 0.14);
+          var oscillator = audioContext.createOscillator(); var gain = audioContext.createGain();
+          oscillator.frequency.value = level === "Unsafe" ? 440 : level === "Poor" ? 660 : 880;
+          gain.gain.setValueAtTime(0.001, start); gain.gain.exponentialRampToValueAtTime(0.18, start + 0.01); gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+          oscillator.connect(gain); gain.connect(audioContext.destination); oscillator.start(start); oscillator.stop(start + duration);
+        }
+      }
+      function findVoice() {
+        if (!window.speechSynthesis) return null;
+        var wanted = text().lang;
+        var voices = window.speechSynthesis.getVoices();
+        return voices.find(function (voice) { return voice.lang.toLowerCase() === wanted.toLowerCase(); }) || voices.find(function (voice) { return voice.lang.toLowerCase().indexOf(wanted.slice(0, 2).toLowerCase()) === 0; });
+      }
+      function speakSentence(sentence, severity) {
+        if (!sentence || muted) return;
+        unlockAudio();
+        var voice = findVoice();
+        if (!voice) { feedback("Install the " + text().name + " offline voice in your phone settings.", true); playAlertBeep(severity || "Moderate"); return; }
+        window.speechSynthesis.cancel();
+        var utterance = new SpeechSynthesisUtterance(sentence); utterance.voice = voice; utterance.lang = text().lang; utterance.rate = Number(voiceRate);
+        window.speechSynthesis.speak(utterance);
+      }
+      function speakResult(announceNoSensorData) {
+        var current = result || evaluate(latest || {});
+        if (!hasSensorReadings()) {
+          if (announceNoSensorData) speakSentence((voiceText[language.value] || voiceText.en).noReadings, "Moderate");
+          return;
+        }
+        speakSentence(buildVoiceSentence(current), current.quality);
+      }
+      function speakAutomaticAlert(current) {
+        if (!testingStarted || !current.problems || !current.problems.length) return;
+        var now = Date.now(); var newProblem = current.problems.find(function (problem) {
+          var key = problem.name + ":" + problem.advice;
+          return !previousProblemKeys[key] && (!problemAlertTimes[key] || now - problemAlertTimes[key] >= 60000);
+        });
+        if (!newProblem) return;
+        var key = newProblem.name + ":" + newProblem.advice; problemAlertTimes[key] = now;
+        speakSentence(buildVoiceSentence(current), current.quality);
+      }
+      function updateAlertProblems(data) {
+        var current = evaluate(data || {}); var active = {};
+        (current.problems || []).forEach(function (problem) { active[problem.name + ":" + problem.advice] = true; });
+        speakAutomaticAlert(current); previousProblemKeys = active;
+      }
+      document.getElementById("checkQuality").addEventListener("click", function () {
+        var messages = feedbackLanguage();
+        if (!hasSensorReadings()) { feedback(messages.noHardware, true); speakResult(true); return; }
+        result = evaluate(latest); renderResult(); feedback(messages.success, false); speakResult(false);
+      });
+      document.getElementById("speakResult").addEventListener("click", speakResult);
+      document.getElementById("testVoice").addEventListener("click", function () {
+        if (!hasSensorReadings()) { feedback((voiceText[language.value] || voiceText.en).noReadings, true); return; }
+        speakResult(false);
+      });
+      document.getElementById("muteVoice").addEventListener("change", function () { muted = this.checked; saveVoiceSetting("feedtest-voice-muted", muted); });
+      document.getElementById("voiceRate").addEventListener("change", function () { voiceRate = Number(this.value); saveVoiceSetting("feedtest-voice-rate", voiceRate); });
+      document.getElementById("exportCsv").addEventListener("click", function () {
+        if (!history.length) { feedback(feedbackLanguage().noHistory, true); return; }
+        exportCsv();
+      });
+      document.getElementById("startTesting").addEventListener("click", openDashboard);
       function updateAge() {
         var t = text(); var age = receivedAt ? Math.floor((Date.now() - receivedAt) / 1000) : 0;
         var ageText = receivedAt ? t.lastUpdate + ": " + age + " " + t.secondsAgo : t.readingBoard;
@@ -175,8 +322,8 @@
       }
       function poll() {
         fetch("/data", { cache: "no-store" }).then(function (response) { if (!response.ok) throw new Error("HTTP"); return response.json(); }).then(function (data) {
-          latest = data; receivedAt = Date.now(); saveReading(data); render();
-        }).catch(function () { render(); });
+          latest = data; receivedAt = Date.now(); isOffline = false; saveReading(data); updateAlertProblems(data); render();
+        }).catch(function () { isOffline = Boolean(latest); render(); });
       }
       language.addEventListener("change", function () { render(); });
       try { language.value = localStorage.getItem("feedtest-language") || "en"; } catch (error) { language.value = "en"; }

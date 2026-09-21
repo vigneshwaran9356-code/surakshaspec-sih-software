@@ -15,5 +15,32 @@
   "humidity": "காற்றின் ஈரப்பதம்",
   "feedTemperature": "தீவனத்தின் வெப்பநிலை",
   "unknownSensor": "சென்சார்",
-  "language": "மொழி"
+  "language": "மொழி",
+  "voiceQualityGood": "நல்லது",
+  "voiceQualityModerate": "மிதமானது",
+  "voiceQualityPoor": "மோசமானது",
+  "voiceQualityUnsafe": "பாதுகாப்பற்றது",
+  "voiceNoProblem": "அளவிடப்பட்ட மதிப்புகளில் எந்தப் பிரச்சினையும் இல்லை.",
+  "voiceLimited": "சில சென்சார்கள் அளவிடப்படாததால் முடிவு வரம்புக்குட்பட்டது.",
+  "voiceNoSensorData": "சென்சார் தரவு இல்லை.",
+  "voiceProblemNames": {
+    "feedTemperatureDifference": "தீவன வெப்பநிலை வேறுபாடு",
+    "airTemperatureStorage": "காற்று வெப்பநிலை சேமிப்பு",
+    "humidityStorage": "ஈரப்பத சேமிப்பு",
+    "silagePhSpoilage": "சிலேஜ் pH கெடுதல்",
+    "silagePhWeak": "சிலேஜ் pH பலவீன நொதித்தல்",
+    "moisture": "ஈரப்பதம்",
+    "saltHigh": "உப்பு",
+    "gasHigh": "வாயு"
+  },
+  "voiceProblemAdvice": {
+    "feedTemperatureHigh": "தீவன வெப்பநிலை காற்று வெப்பநிலையை விட 5 டிகிரி அல்லது அதிகமாக உள்ளது.",
+    "airTemperatureHigh": "காற்று வெப்பநிலை 35 டிகிரிக்கு மேல் உள்ளது.",
+    "humidityHigh": "ஈரப்பதம் 70 சதவீதத்திற்கு மேல் உள்ளது.",
+    "silagePhSpoilage": "சிலேஜ் pH 5 அல்லது அதற்கு மேல் உள்ளது.",
+    "silagePhWeak": "சிலேஜ் pH 4.5 முதல் 5 வரை உள்ளது.",
+    "moistureHigh": "இந்த தீவனத்திற்கு ஈரப்பதம் அதிகமாக உள்ளது.",
+    "saltHigh": "உப்பு அளவு அதிகமாக உள்ளது.",
+    "gasHigh": "வாயு அளவு அதிகமாக உள்ளது."
+  }
 }
