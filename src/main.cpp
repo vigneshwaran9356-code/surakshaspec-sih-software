@@ -1,18 +1,24 @@
 #include <Arduino.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <DHT.h>
 #include <DNSServer.h>
 #include <LittleFS.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
+#include <Wire.h>
 
 #define HAS_DHT11 1
 #define HAS_LM35 0
 #define CAPTIVE_PORTAL_ENABLED 1
 
-constexpr uint8_t DHT_PIN = D2;
+constexpr uint8_t DHT_PIN = D5;
 constexpr uint8_t LM35_PIN = A0;
 constexpr uint8_t LM35_SAMPLE_COUNT = 5;
 constexpr unsigned long SENSOR_INTERVAL_MS = 2000;
+constexpr uint8_t OLED_WIDTH = 128;
+constexpr uint8_t OLED_HEIGHT = 64;
+constexpr uint8_t OLED_ADDRESS = 0x3C;
 
 const char *WIFI_SSID = "FeedTest";
 const uint8_t MAX_WIFI_CLIENTS = 4;
@@ -20,6 +26,7 @@ const uint8_t MAX_WIFI_CLIENTS = 4;
 ESP8266WebServer server(80);
 DNSServer dnsServer;
 DHT dht(DHT_PIN, DHT11);
+Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);
 
 struct SensorValues {
   float temp = NAN;
@@ -69,6 +76,33 @@ String currentJson() {
          ",\"ftemp\":" + jsonValue(sensors.ftemp) + "}";
 }
 
+void updateOled() {
+  oled.clearDisplay();
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setTextSize(1);
+  oled.setCursor(0, 0);
+  oled.println("FeedTest - DHT11");
+  oled.drawLine(0, 11, OLED_WIDTH - 1, 11, SSD1306_WHITE);
+
+  oled.setTextSize(2);
+  oled.setCursor(0, 18);
+  if (isnan(sensors.temp) || isnan(sensors.hum)) {
+    oled.println("Sensor error");
+  } else {
+    oled.print("T: ");
+    oled.print(sensors.temp, 1);
+    oled.println(" C");
+    oled.print("H: ");
+    oled.print(sensors.hum, 1);
+    oled.println(" %");
+  }
+
+  oled.setTextSize(1);
+  oled.setCursor(0, 56);
+  oled.println("http://192.168.4.1");
+  oled.display();
+}
+
 void addNoCacheHeaders() {
   server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -99,6 +133,21 @@ void setup() {
 #if HAS_DHT11
   dht.begin();
 #endif
+
+  Wire.begin(D2, D1);
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+    Serial.println("OLED initialization failed");
+  } else {
+    oled.clearDisplay();
+    oled.setTextColor(SSD1306_WHITE);
+    oled.setTextSize(2);
+    oled.setCursor(0, 0);
+    oled.println("FeedTest");
+    oled.setTextSize(1);
+    oled.println();
+    oled.println("Starting sensor...");
+    oled.display();
+  }
 
   if (!LittleFS.begin()) {
     Serial.println("LittleFS mount failed");
@@ -133,6 +182,7 @@ void loop() {
   if (millis() - lastSensorMs >= SENSOR_INTERVAL_MS) {
     lastSensorMs = millis();
     updateSensors();
+    updateOled();
     Serial.println(currentJson());
   }
 }
